@@ -1,10 +1,13 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 void main() => runApp(App());
 
@@ -30,6 +33,8 @@ class _ImageGeneratorState extends State<ImageGenerator> {
   final canvasHeight = 638.0;
   ByteData imgBytes;
   bool isImageloaded = false;
+
+  final directoryName = 'flutter';
 
   Future<ui.Image> loadImage(List<int> img) async {
     final Completer<ui.Image> completer = Completer();
@@ -94,7 +99,7 @@ class _ImageGeneratorState extends State<ImageGenerator> {
                 padding: const EdgeInsets.all(12.0),
                 child: RaisedButton(
                   child: Text('Save ID'),
-                  onPressed: imgBytes != null ? () {} : null,
+                  onPressed: imgBytes != null ? () => saveImage('JDT1234') : null,
                 ),
               ),
             ],
@@ -286,5 +291,18 @@ class _ImageGeneratorState extends State<ImageGenerator> {
     setState(() {
       imgBytes = pngBytes;
     });
+  }
+
+  void saveImage(String userCode) async {
+    if (!(await Permission.storage .request().isGranted)) await Permission.storage.request();
+
+    Directory directory = await getExternalStorageDirectory();
+    String path = directory.path;
+    print(path);
+    await Directory('$path/$directoryName').create(recursive: true);
+    File('$path/$directoryName/$userCode.png')
+        .writeAsBytesSync(imgBytes.buffer.asInt8List());
+
+    print("Saved Succuessfully");
   }
 }
