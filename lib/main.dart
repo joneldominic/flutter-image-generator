@@ -1,117 +1,290 @@
+import 'dart:async';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
-void main() {
-  runApp(MyApp());
-}
+void main() => runApp(App());
 
-class MyApp extends StatelessWidget {
-  // This widget is the root of your application.
+class App extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // Try running your application with "flutter run". You'll see the
-        // application has a blue toolbar. Then, without quitting the app, try
-        // changing the primarySwatch below to Colors.green and then invoke
-        // "hot reload" (press "r" in the console where you ran "flutter run",
-        // or simply save your changes to "hot reload" in a Flutter IDE).
-        // Notice that the counter didn't reset back to zero; the application
-        // is not restarted.
-        primarySwatch: Colors.blue,
-        // This makes the visual density adapt to the platform that you run
-        // the app on. For desktop platforms, the controls will be smaller and
-        // closer together (more dense) than on mobile platforms.
-        visualDensity: VisualDensity.adaptivePlatformDensity,
+      home: Scaffold(
+        body: ImageGenerator(),
       ),
-      home: MyHomePage(title: 'Flutter Demo Home Page'),
+      debugShowCheckedModeBanner: false,
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  MyHomePage({Key key, this.title}) : super(key: key);
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
-
+class ImageGenerator extends StatefulWidget {
   @override
-  _MyHomePageState createState() => _MyHomePageState();
+  _ImageGeneratorState createState() => _ImageGeneratorState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class _ImageGeneratorState extends State<ImageGenerator> {
+  final canvasWidth = 1013.0;
+  final canvasHeight = 638.0;
+  ByteData imgBytes;
+  bool isImageloaded = false;
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
+  Future<ui.Image> loadImage(List<int> img) async {
+    final Completer<ui.Image> completer = Completer();
+    ui.decodeImageFromList(img, (ui.Image img) {
+      setState(() {
+        isImageloaded = true;
+      });
+      return completer.complete(img);
     });
+    return completer.future;
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
-    return Scaffold(
-      appBar: AppBar(
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.max,
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: <Widget>[
+          Image.asset('assets/template/front.png'),
+          imgBytes != null
+              ? Center(
+                  child: Image.memory(
+                    Uint8List.view(imgBytes.buffer),
+                  ),
+                )
+              : Center(
+                  child: Image.asset('assets/template/back.png'),
+                ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: RaisedButton(
+                  child: Text('Generate ID'),
+                  onPressed: () => generateImage(
+                    profilePath: 'assets/data/profile.jpg',
+                    qrPath: 'assets/data/qr.png',
+                    name: 'Jonel Dominic Tapang'.toUpperCase(),
+                    code: 'JDT1234',
+                    address: 'Barangay, City, Province',
+                    number: '09123456789',
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: RaisedButton(
+                  child: Text('Clear ID'),
+                  onPressed: imgBytes != null
+                      ? () {
+                          setState(() {
+                            imgBytes = null;
+                          });
+                        }
+                      : null,
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: RaisedButton(
+                  child: Text('Save ID'),
+                  onPressed: imgBytes != null ? () {} : null,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Invoke "debug painting" (press "p" in the console, choose the
-          // "Toggle Debug Paint" action from the Flutter Inspector in Android
-          // Studio, or the "Toggle Debug Paint" command in Visual Studio Code)
-          // to see the wireframe for each widget.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Text(
-              'You have pushed the button this many times:',
-            ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headline4,
-            ),
-          ],
+    );
+  }
+
+  Future<ByteData> generateProfileImage(String profilePath) async {
+    final profileSize = 274.0;
+
+    final ByteData profile = await rootBundle.load(profilePath);
+    ui.Image profileImage = await loadImage(Uint8List.view(profile.buffer));
+
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(
+      recorder,
+      Rect.fromPoints(Offset(0.0, 0.0), Offset(profileSize, profileSize)),
+    );
+
+    canvas.drawRect(
+      Rect.fromLTWH(0, 0, profileSize, profileSize),
+      Paint()
+        ..color = Colors.grey
+        ..style = PaintingStyle.fill
+        ..strokeWidth = 7,
+    );
+
+    if (isImageloaded) {
+      canvas.drawImageRect(
+        profileImage,
+        Rect.fromCenter(
+          center: Offset(profileImage.width / 2, profileImage.height / 2),
+          width: (profileImage.height > profileImage.width
+                  ? profileImage.height
+                  : profileImage.width)
+              .toDouble(),
+          height: (profileImage.height > profileImage.width
+                  ? profileImage.height
+                  : profileImage.width)
+              .toDouble(),
+        ),
+        Rect.fromLTWH(0, 0, profileSize, profileSize),
+        Paint(),
+      );
+    }
+
+    final picture = recorder.endRecording();
+    final img = await picture.toImage(profileSize.toInt(), profileSize.toInt());
+    final pngBytes = await img.toByteData(format: ImageByteFormat.png);
+
+    return pngBytes;
+  }
+
+  void generateImage({
+    @required String profilePath,
+    @required String qrPath,
+    @required String name,
+    @required String code,
+    @required String address,
+    @required String number,
+  }) async {
+    final ByteData data = await rootBundle.load('assets/template/back.png');
+    ui.Image templateImage = await loadImage(Uint8List.view(data.buffer));
+
+    ui.Image profileImage = await loadImage(
+        Uint8List.view((await generateProfileImage(profilePath)).buffer));
+
+    final ByteData qrData = await rootBundle.load(qrPath);
+    ui.Image qrImage = await loadImage(Uint8List.view(qrData.buffer));
+
+    final recorder = ui.PictureRecorder();
+
+    final canvas = Canvas(
+      recorder,
+      Rect.fromPoints(
+        Offset(0.0, 0.0),
+        Offset(canvasWidth, canvasHeight),
+      ),
+    );
+
+    if (isImageloaded) {
+      canvas.drawImage(profileImage, Offset(228.0, 183.0), Paint());
+      canvas.drawImage(templateImage, Offset(0.0, 0.0), Paint());
+      canvas.drawImageRect(
+        qrImage,
+        Rect.fromLTWH(
+            0, 0, qrImage.width.toDouble(), qrImage.height.toDouble()),
+        Rect.fromLTWH(687, 407, 200, 200),
+        Paint(),
+      );
+    }
+
+    final labelXOffset = 605.0;
+    TextPainter(
+      text: TextSpan(
+        text: name,
+        style: TextStyle(
+          fontSize: 30,
+          color: Colors.black,
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
-    );
+      textDirection: TextDirection.ltr,
+    )
+      ..layout(
+        minWidth: 0,
+        maxWidth: 413,
+      )
+      ..paint(
+        canvas,
+        Offset(
+          labelXOffset,
+          115,
+        ),
+      );
+
+    TextPainter(
+      text: TextSpan(
+        text: code,
+        style: TextStyle(
+          fontSize: 30,
+          color: Colors.black,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )
+      ..layout(
+        minWidth: 0,
+        maxWidth: 300,
+      )
+      ..paint(
+        canvas,
+        Offset(
+          labelXOffset,
+          200,
+        ),
+      );
+
+    TextPainter(
+      text: TextSpan(
+        text: address,
+        style: TextStyle(
+          fontSize: 25,
+          color: Colors.black,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )
+      ..layout(
+        minWidth: 0,
+        maxWidth: 300,
+      )
+      ..paint(
+        canvas,
+        Offset(
+          labelXOffset,
+          290,
+        ),
+      );
+
+    TextPainter(
+      text: TextSpan(
+        text: number,
+        style: TextStyle(
+          fontSize: 25,
+          color: Colors.black,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )
+      ..layout(
+        minWidth: 0,
+        maxWidth: 300,
+      )
+      ..paint(
+        canvas,
+        Offset(
+          labelXOffset,
+          325,
+        ),
+      );
+
+    final picture = recorder.endRecording();
+    final img =
+        await picture.toImage(canvasWidth.toInt(), canvasHeight.toInt());
+    final pngBytes = await img.toByteData(format: ImageByteFormat.png);
+
+    setState(() {
+      imgBytes = pngBytes;
+    });
   }
 }
