@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 void main() => runApp(App());
 
@@ -99,7 +100,8 @@ class _ImageGeneratorState extends State<ImageGenerator> {
                 padding: const EdgeInsets.all(12.0),
                 child: RaisedButton(
                   child: Text('Save ID'),
-                  onPressed: imgBytes != null ? () => saveImage('JDT1234') : null,
+                  onPressed:
+                      imgBytes != null ? () => saveImage('JDT1234') : null,
                 ),
               ),
             ],
@@ -169,9 +171,6 @@ class _ImageGeneratorState extends State<ImageGenerator> {
     ui.Image profileImage = await loadImage(
         Uint8List.view((await generateProfileImage(profilePath)).buffer));
 
-    final ByteData qrData = await rootBundle.load(qrPath);
-    ui.Image qrImage = await loadImage(Uint8List.view(qrData.buffer));
-
     final recorder = ui.PictureRecorder();
 
     final canvas = Canvas(
@@ -185,10 +184,31 @@ class _ImageGeneratorState extends State<ImageGenerator> {
     if (isImageloaded) {
       canvas.drawImage(profileImage, Offset(228.0, 183.0), Paint());
       canvas.drawImage(templateImage, Offset(0.0, 0.0), Paint());
+
+      final qrData = "jonel dominic cute";
+      final ByteData data =
+          await rootBundle.load('assets/template/qr_icon.png');
+      ui.Image qrImage = await loadImage(
+        Uint8List.view(data.buffer),
+      );
+
+      final qrImagePainted = QrPainter(
+        data: qrData,
+        version: QrVersions.auto,
+        embeddedImage: qrImage,
+        embeddedImageStyle: QrEmbeddedImageStyle(
+          size: Size(40, 40),
+        ),
+      );
+
+      ByteBuffer byteBuffer =
+          await qrImagePainted.toImageData(687).then((value) => value.buffer);
+      ui.Image qrImage2 = await loadImage(Uint8List.view(byteBuffer));
+
       canvas.drawImageRect(
-        qrImage,
+        qrImage2,
         Rect.fromLTWH(
-            0, 0, qrImage.width.toDouble(), qrImage.height.toDouble()),
+            0, 0, qrImage2.width.toDouble(), qrImage2.height.toDouble()),
         Rect.fromLTWH(687, 407, 200, 200),
         Paint(),
       );
@@ -294,13 +314,20 @@ class _ImageGeneratorState extends State<ImageGenerator> {
   }
 
   void saveImage(String userCode) async {
-    if (!(await Permission.storage .request().isGranted)) await Permission.storage.request();
+    if (!(await Permission.storage.request().isGranted))
+      await Permission.storage.request();
 
     Directory directory = await getExternalStorageDirectory();
     String path = directory.path;
     print(path);
     await Directory('$path/$directoryName').create(recursive: true);
-    File('$path/$directoryName/$userCode.png')
+
+    final ByteData frontByteData =
+        await rootBundle.load('assets/template/front.png');
+    File('$path/$directoryName/$userCode-Front.png')
+        .writeAsBytesSync(frontByteData.buffer.asInt8List());
+
+    File('$path/$directoryName/$userCode-Back.png')
         .writeAsBytesSync(imgBytes.buffer.asInt8List());
 
     print("Saved Succuessfully");
